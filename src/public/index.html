@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Magic Touch Editor</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">git branch -M main
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css"/>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #0f1117;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  width: 900px;
+  padding: 40px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 25px;
+  font-size: 28px;
+}
+
+.card {
+  background: #1a1d25;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+
+.preview-area {
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #11141c;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.placeholder {
+  opacity: 0.4;
+  font-size: 18px;
+}
+
+img {
+  max-width: 100%;
+  display: none;
+}
+
+.slider-area {
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+}
+
+.control {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+.button-row {
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 12px 25px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 5px;
+}
+
+.primary {
+  background: #4e8cff;
+  color: white;
+}
+
+.primary:hover {
+  background: #2f6fe0;
+}
+
+.secondary {
+  background: #444;
+  color: white;
+}
+
+.secondary:hover {
+  background: #666;
+}
+
+.author {
+  font-size: 14px;
+  font-weight: normal;
+  opacity: 0.6;
+  margin-top: 6px;
+  letter-spacing: 1px;
+}
+
+.preview-area {
+  min-height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #11141c;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 2px dashed #2f6fe0;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.preview-area.dragover {
+  background: #1c2330;
+  border-color: #4e8cff;
+}
+.valor-slider {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 14px;
+  opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+ <h1>
+  ✨ Magic Touch Editor  
+  <div class="author">by Fillipe Welausen</div>
+</h1>
+
+  <div class="card">
+
+    <input type="file" id="fileInput">
+
+    <div class="preview-area" id="dropArea">
+  <div class="placeholder" id="placeholder">
+    📷 Arraste uma imagem aqui ou clique para selecionar
+  </div>
+  <img id="preview">
+</div>
+
+   <div class="slider-area">
+
+  <div class="control">
+    <label>Brilho</label>
+    <input type="range" id="brilho" min="0" max="2" step="0.1" value="1">
+    <div class="valor-slider" id="brilhoValor">1</div>
+  </div>
+
+  <div class="control">
+    <label>Contraste</label>
+    <input type="range" id="contraste" min="0" max="3" step="0.1" value="1">
+    <div class="valor-slider" id="contrasteValor">1</div>
+  </div>
+
+</div>
+
+    <div class="button-row">
+      <button class="primary" onclick="baixar()">Download</button>
+      <button class="secondary" onclick="resetCrop()">Reset Crop</button>
+      <button class="secondary" onclick="resetFiltros()">Reset Brilho/Contraste</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let filename = "";
+let cropper = null;
+
+resetFiltros();
+
+document.getElementById("fileInput").onchange = async function() {
+  const formData = new FormData();
+  formData.append("imagem", this.files[0]);
+
+  const res = await fetch("/upload", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await res.json();
+  filename = data.filename;
+
+  const preview = document.getElementById("preview");
+  const placeholder = document.getElementById("placeholder");
+
+  preview.src = URL.createObjectURL(this.files[0]);
+  preview.style.display = "block";
+  placeholder.style.display = "none";
+
+  preview.onload = () => {
+    if (cropper) cropper.destroy();
+
+    cropper = new Cropper(preview, {
+      viewMode: 1,
+      autoCropArea: 1,
+      responsive: true,
+      background: false
+    });
+  };
+};
+
+function atualizarPreview() {
+  const brilho = document.getElementById("brilho").value;
+  const contraste = document.getElementById("contraste").value;
+
+  document.getElementById("brilhoValor").textContent = brilho;
+  document.getElementById("contrasteValor").textContent = contraste;
+
+  const container = document.querySelector(".cropper-container");
+
+  if (container) {
+    container.style.filter =
+      `brightness(${brilho}) contrast(${contraste})`;
+  }
+}
+
+document.getElementById("brilho").oninput = atualizarPreview;
+document.getElementById("contraste").oninput = atualizarPreview;
+
+function resetCrop() {
+  if (cropper) cropper.reset();
+}
+
+function resetFiltros() {
+  document.getElementById("brilho").value = 1;
+  document.getElementById("contraste").value = 1.5;
+
+   document.getElementById("brilhoValor").textContent = 1;
+  document.getElementById("contrasteValor").textContent = 1.5;
+
+  const container = document.querySelector(".cropper-container");
+  if (container) container.style.filter = "none";
+}
+
+async function baixar() {
+  if (!cropper) return alert("Carregue uma imagem primeiro.");
+
+  const cropData = cropper.getData(true);
+
+  const res = await fetch("/process", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filename,
+      brilho: document.getElementById("brilho").value,
+      contraste: document.getElementById("contraste").value,
+      cropX: Math.round(cropData.x),
+      cropY: Math.round(cropData.y),
+      cropW: Math.round(cropData.width),
+      cropH: Math.round(cropData.height)
+    })
+  });
+
+  const blob = await res.blob();
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "imagem-editada.jpg";
+  link.click();
+}
+
+
+const dropArea = document.getElementById("dropArea");
+const fileInput = document.getElementById("fileInput");
+
+dropArea.addEventListener("click", (e) => {
+  // Só abre seletor se ainda não tiver imagem
+  if (!cropper) {
+    fileInput.click();
+  }
+});
+
+dropArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropArea.classList.add("dragover");
+});
+
+dropArea.addEventListener("dragleave", () => {
+  dropArea.classList.remove("dragover");
+});
+
+dropArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropArea.classList.remove("dragover");
+
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+
+  fileInput.files = e.dataTransfer.files;
+  fileInput.dispatchEvent(new Event("change"));
+});
+
+
+</script>
+
+</body>
+</html>
